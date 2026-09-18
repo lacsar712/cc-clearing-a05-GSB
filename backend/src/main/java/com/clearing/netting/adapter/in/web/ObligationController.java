@@ -2,6 +2,8 @@ package com.clearing.netting.adapter.in.web;
 
 import com.clearing.netting.adapter.in.web.auth.AuthContext;
 import com.clearing.netting.application.ObligationApplicationService;
+import com.clearing.netting.application.ObligationImportResult;
+import com.clearing.netting.domain.exception.DomainException;
 import com.clearing.netting.domain.model.ObligationStatus;
 import com.clearing.netting.domain.model.TradeObligation;
 import jakarta.validation.Valid;
@@ -15,8 +17,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,6 +59,17 @@ public class ObligationController {
                 request.settleDate()));
     }
 
+    @PostMapping("/import")
+    public ObligationImportResponse importCsv(@RequestParam("file") MultipartFile file) throws IOException {
+        AuthContext.requireOperator();
+        if (file == null || file.isEmpty()) {
+            throw new DomainException("INVALID_CSV", "请选择要上传的 CSV 文件");
+        }
+        String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+        ObligationImportResult result = obligationService.importCsv(content);
+        return ObligationImportResponse.from(result);
+    }
+
     public record CreateObligationRequest(
             @NotBlank String payerMemberId,
             @NotBlank String payeeMemberId,
@@ -84,6 +100,45 @@ public class ObligationController {
                     o.getSettleDate(),
                     o.getStatus(),
                     o.getNettingRunId());
+        }
+    }
+
+    public record ObligationImportResponse(
+            int totalRows,
+            int successCount,
+            int failureCount,
+            List<RowResponse> rows) {
+
+        static ObligationImportResponse from(ObligationImportResult result) {
+            List<RowResponse> rows = result.rows().stream()
+                    .map(RowResponse::from)
+                    .collect(Collectors.toList());
+            return new ObligationImportResponse(
+                    result.totalRows(), result.successCount(), result.failureCount(), rows);
+        }
+
+        public record RowResponse(
+                int lineNumber,
+                boolean success,
+                String payerMemberId,
+                String payeeMemberId,
+                String currency,
+                String amount,
+                String tradeDate,
+                String settleDate,
+                String error) {
+            static RowResponse from(ObligationImportResult.RowResult r) {
+                return new RowResponse(
+                        r.lineNumber(),
+                        r.success(),
+                        r.payerMemberId(),
+                        r.payeeMemberId(),
+                        r.currency(),
+                        r.amount(),
+                        r.tradeDate(),
+                        r.settleDate(),
+                        r.error());
+            }
         }
     }
 }

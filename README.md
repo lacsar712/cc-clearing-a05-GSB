@@ -46,10 +46,11 @@ docker compose down
 2. 首页查看 seed 灌入的待轧差义务摘要与最近批次
 3. 「会员」页确认演示会员为 ACTIVE；可新建或启停
 4. 「义务」页筛选 OPEN 义务，或新建一笔同币种义务
-5. 「轧差执行」选择 settleDate + currency（如 USD），执行轧差
-6. 确认净头寸表 ΣnetAmount = 0，批次状态 COMPLETED
-7. 进入批次详情，点击 Settle，义务变为 SETTLED
-8. 使用 `viewer` 登录，确认只能浏览、无法执行写操作
+5. 「义务导入」页上传 CSV（表头：`payerMemberId,payeeMemberId,currency,amount,tradeDate,settleDate`），页面分行展示成功/失败及失败原因，成功行以 OPEN 写入并可在「义务」页查看（仅操作员可导入）
+6. 「轧差执行」选择 settleDate + currency（如 USD），执行轧差
+7. 确认净头寸表 ΣnetAmount = 0，批次状态 COMPLETED
+8. 进入批次详情，点击 Settle，义务变为 SETTLED
+9. 使用 `viewer` 登录，确认只能浏览、无法执行写操作（含 CSV 导入）
 
 健康检查：
 

@@ -84,11 +84,13 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api from '../api/client'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
 const members = ref([])
 const rows = ref([])
 const loading = ref(false)
@@ -104,10 +106,11 @@ const form = reactive({
   settleDate: today
 })
 
+const hasQuery = Object.keys(route.query).length > 0
 const filters = reactive({
-  currency: 'USD',
-  settleDate: today,
-  status: 'OPEN'
+  currency: typeof route.query.currency === 'string' ? route.query.currency : (hasQuery ? '' : 'USD'),
+  settleDate: typeof route.query.settleDate === 'string' ? route.query.settleDate : (hasQuery ? '' : today),
+  status: typeof route.query.status === 'string' ? route.query.status : 'OPEN'
 })
 
 const activeMembers = computed(() => members.value.filter((m) => m.status === 'ACTIVE'))
