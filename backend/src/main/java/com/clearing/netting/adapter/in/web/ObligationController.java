@@ -2,6 +2,8 @@ package com.clearing.netting.adapter.in.web;
 
 import com.clearing.netting.adapter.in.web.auth.AuthContext;
 import com.clearing.netting.application.ObligationApplicationService;
+import com.clearing.netting.application.ObligationApplicationService.CsvImportResult;
+import com.clearing.netting.application.ObligationApplicationService.CsvRowError;
 import com.clearing.netting.domain.model.ObligationStatus;
 import com.clearing.netting.domain.model.TradeObligation;
 import jakarta.validation.Valid;
@@ -15,7 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -52,6 +56,33 @@ public class ObligationController {
                 request.amount(),
                 request.tradeDate(),
                 request.settleDate()));
+    }
+
+    @PostMapping("/import")
+    public CsvImportResponse importCsv(@RequestParam("file") MultipartFile file) throws IOException {
+        AuthContext.requireOperator();
+        if (file == null || file.isEmpty()) {
+            throw new com.clearing.netting.domain.exception.DomainException("CSV_EMPTY", "csv file is empty");
+        }
+        CsvImportResult result = obligationService.importCsv(file.getBytes());
+        return CsvImportResponse.from(result);
+    }
+
+    public record CsvRowErrorResponse(int lineNumber, String rawLine, String reason) {
+        static CsvRowErrorResponse from(CsvRowError e) {
+            return new CsvRowErrorResponse(e.lineNumber(), e.rawLine(), e.reason());
+        }
+    }
+
+    public record CsvImportResponse(int totalRows, int successCount, int failureCount,
+                                    List<CsvRowErrorResponse> errors) {
+        static CsvImportResponse from(CsvImportResult r) {
+            return new CsvImportResponse(
+                    r.totalRows(),
+                    r.successCount(),
+                    r.errors().size(),
+                    r.errors().stream().map(CsvRowErrorResponse::from).collect(Collectors.toList()));
+        }
     }
 
     public record CreateObligationRequest(
